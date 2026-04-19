@@ -5,7 +5,7 @@ import forceAtlas2 from 'graphology-layout-forceatlas2';
 
 // ─── Amber hex for sigma canvas (oklch → hex approximation) ───────────────────
 const AMBER   = '#e8b659';
-const DIM_BG  = '#0e1425'; // near sky-2, very dark, for dimmed nodes
+const DIM_BG  = '#3a3f52'; // mid-gray for dimmed nodes
 
 // ─── Module-level state ───────────────────────────────────────────────────────
 let renderer  = null;
@@ -253,16 +253,17 @@ function init() {
   renderer = new Sigma(graph, container, {
     labelRenderedSizeThreshold: 6,
     labelFont:   'Cormorant Garamond, Times New Roman, serif',
-    labelColor:  { color: '#d7cdb3' },
+    labelColor:  { color: '#000000' },
     labelSize:   13,
     defaultEdgeColor: 'rgba(239,230,207,0.10)',
 
     nodeReducer(node, attrs) {
       const res = { ...attrs };
 
-      const isSelected = node === state.selectedNode;
-      const isNeighbor = state.neighbors.has(node);
-      const dimmed     = !isSelected && !isNeighbor && isDimmed(node);
+      const isSelected   = node === state.selectedNode;
+      const isNeighbor   = state.neighbors.has(node);
+      const hasSelection = state.selectedNode !== null;
+      const dimmed       = !isSelected && !isNeighbor && (isDimmed(node) || hasSelection);
 
       // Label: only on hover
       res.label = node === state.hoveredNode ? attrs.label : undefined;
