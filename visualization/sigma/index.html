@@ -1,128 +1,670 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ezra Talks — Sigma.js</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { display: flex; flex-direction: column; height: 100vh; font-family: system-ui, sans-serif; overflow: hidden; background: #fff; }
-    #toolbar {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 14px;
-      background: #f2f2f2;
-      border-bottom: 1px solid #e0e0e0;
-      flex-shrink: 0;
-    }
-    #layout-toggle {
-      padding: 7px 14px;
-      cursor: pointer;
-      background: #222;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      font-size: 13px;
-      white-space: nowrap;
-      transition: background 0.15s;
-    }
-    #layout-toggle:hover { background: #444; }
-    #search {
-      flex: 1;
-      max-width: 320px;
-      padding: 7px 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 13px;
-      outline: none;
-    }
-    #search:focus { border-color: #888; }
-    #main { display: flex; flex: 1; overflow: hidden; }
-    #graph-container { flex: 1; }
-    #panel {
-      width: 300px;
-      border-left: 1px solid #e0e0e0;
-      display: flex;
-      flex-direction: column;
-      background: #fafafa;
-      overflow-y: auto;
-      padding: 16px;
-      flex-shrink: 0;
-    }
-    #placeholder { color: #bbb; font-size: 13px; text-align: center; margin-top: 48px; }
-    #detail { display: none; }
-    #detail h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; line-height: 1.45; }
-    .meta { font-size: 12px; color: #777; margin-bottom: 10px; line-height: 1.6; }
-    .topic-badge {
-      display: inline-block;
-      padding: 2px 9px;
-      background: #e6e6e6;
-      border-radius: 10px;
-      font-size: 11px;
-      color: #555;
-      margin-bottom: 12px;
-    }
-    .abstract { font-size: 13px; line-height: 1.65; color: #333; }
-    .video-link {
-      display: none;
-      margin-top: 14px;
-      padding: 6px 14px;
-      background: #c41230;
-      color: #fff;
-      text-decoration: none;
-      border-radius: 4px;
-      font-size: 13px;
-    }
-    .video-link:hover { background: #a00f27; }
-    #legend {
-      margin-top: 16px;
-      padding-top: 14px;
-      border-top: 1px solid #e0e0e0;
-    }
-    #legend h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #999; margin-bottom: 8px; }
-    .legend-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      margin-bottom: 6px;
-      font-size: 12px;
-      color: #444;
-      line-height: 1.4;
-    }
-    .legend-swatch {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      margin-top: 1px;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ezra Talks — Constellation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sky-0:   #070a14;
+    --sky-1:   #0b1020;
+    --sky-2:   #11172b;
+    --sky-3:   #1a2239;
+    --sky-4:   #242d46;
+    --cream:   #efe6cf;
+    --cream-2: #d7cdb3;
+    --cream-3: #9a9079;
+    --cream-4: #6b644f;
+    --amber:   oklch(0.78 0.12 75);
+    --amber-2: oklch(0.86 0.09 75);
+    --amber-glow: oklch(0.78 0.12 75 / 0.22);
+    --rule:    rgba(239, 230, 207, 0.10);
+    --rule-2:  rgba(239, 230, 207, 0.06);
+    --serif: 'Cormorant Garamond', 'Times New Roman', serif;
+    --sans:  'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    --mono:  'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    background: var(--sky-1);
+    color: var(--cream);
+    font-family: var(--sans);
+    font-size: 14px;
+    letter-spacing: 0.005em;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ===== Stage layout ===== */
+  .stage {
+    position: fixed; inset: 0;
+    display: grid;
+    grid-template-rows: 56px 1fr;
+    grid-template-columns: 240px 1fr 440px;
+    grid-template-areas:
+      "head head head"
+      "rail canvas detail";
+  }
+
+  /* ===== Top bar ===== */
+  .top {
+    grid-area: head;
+    display: flex; align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--rule);
+    background: linear-gradient(to bottom, rgba(11,16,32,0.96), rgba(11,16,32,0.72));
+    backdrop-filter: blur(10px);
+    position: relative;
+    z-index: 20;
+    gap: 0;
+  }
+  .mark {
+    display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0;
+  }
+  .mark-glyph {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1px solid var(--cream-2);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .mark-glyph::before {
+    content: ""; position: absolute; inset: 6px;
+    border-radius: 50%;
+    background: var(--amber);
+    box-shadow: 0 0 10px var(--amber-glow);
+  }
+  .mark-title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 19px;
+    letter-spacing: 0.01em;
+    line-height: 1;
+  }
+  .mark-title em { font-style: italic; color: var(--cream-2); font-weight: 400; }
+  .mark-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--cream-3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+  .top-spacer { flex: 1; }
+
+  .cmd {
+    position: absolute;
+    left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: min(520px, 42vw);
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px 8px 14px;
+    border: 1px solid var(--sky-4);
+    border-radius: 8px;
+    background: rgba(17, 23, 43, 0.72);
+    backdrop-filter: blur(8px);
+    color: var(--cream-2);
+    font-size: 13px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .cmd:focus-within {
+    border-color: rgba(232, 182, 89, 0.4);
+    box-shadow: 0 0 0 3px var(--amber-glow);
+  }
+  .cmd .icon { color: var(--cream-3); font-size: 14px; }
+  .cmd input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--cream);
+    font-family: var(--sans);
+    font-size: 13px;
+    caret-color: var(--amber);
+  }
+  .cmd input::placeholder { color: var(--cream-3); }
+  .kbd {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 6px;
+    border: 1px solid var(--sky-4);
+    border-radius: 4px;
+    color: var(--cream-3);
+    background: rgba(36, 45, 70, 0.5);
+    flex-shrink: 0;
+  }
+
+  .top-right {
+    display: flex; gap: 16px; align-items: center;
+    font-family: var(--mono); font-size: 10px;
+    color: var(--cream-3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .top-right .stat b { color: var(--cream); font-weight: 500; }
+  .top-right .sep { color: var(--cream-4); }
+
+  /* ===== Left rail ===== */
+  .rail {
+    grid-area: rail;
+    border-right: 1px solid var(--rule);
+    padding: 22px 18px;
+    overflow-y: auto;
+    background: linear-gradient(to right, rgba(7,10,20,0.7), transparent 40%);
+  }
+  .rail::-webkit-scrollbar { width: 4px; }
+  .rail::-webkit-scrollbar-thumb { background: var(--sky-4); border-radius: 2px; }
+
+  .rail-section + .rail-section { margin-top: 24px; }
+  .rail-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--cream-3);
+    margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .rail-label .clear {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--amber);
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    text-transform: none;
+  }
+
+  .chip-cloud { display: flex; flex-wrap: wrap; gap: 5px 4px; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 9px;
+    border: 1px solid var(--sky-4);
+    border-radius: 99px;
+    color: var(--cream-2);
+    background: transparent;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
+    letter-spacing: 0.01em;
+  }
+  .chip:hover { border-color: rgba(232,182,89,0.5); color: var(--cream); }
+  .chip.on { background: var(--amber); color: var(--sky-0); border-color: var(--amber); }
+  .chip .ct { color: var(--cream-4); margin-left: 6px; font-size: 10px; }
+  .chip.on .ct { color: rgba(7,10,20,0.55); }
+
+  .view-opts { display: flex; flex-direction: column; gap: 3px; }
+  .view-opt {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--cream-2);
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: -8px;
+  }
+  .view-opt:hover { background: var(--sky-3); color: var(--cream); }
+  .view-opt .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    border: 1px solid var(--cream-3);
+    flex-shrink: 0;
+  }
+  .view-opt.on .dot { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 6px var(--amber-glow); }
+  .view-opt.on { color: var(--cream); }
+
+  .suggest { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+  .suggest a {
+    color: var(--cream-2);
+    text-decoration: none;
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--rule);
+    cursor: pointer;
+  }
+  .suggest a:hover { color: var(--amber-2); }
+  .suggest a .glyph { color: var(--amber); font-size: 11px; }
+
+  /* ===== Canvas ===== */
+  .canvas-wrap {
+    grid-area: canvas;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 80% 60% at 30% 35%, rgba(26, 34, 57, 0.7), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 78% 70%, rgba(36, 28, 20, 0.35), transparent 65%),
+      var(--sky-1);
+  }
+  .canvas-wrap::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(rgba(239,230,207,0.04) 1px, transparent 1px),
+      radial-gradient(rgba(239,230,207,0.025) 1px, transparent 1px);
+    background-size: 3px 3px, 7px 7px;
+    background-position: 0 0, 1px 2px;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0.9;
+    z-index: 1;
+  }
+  .canvas-wrap::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%);
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  #graph-container {
+    position: absolute; inset: 0;
+    z-index: 2;
+  }
+
+  .canvas-corner {
+    position: absolute;
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--cream-3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    z-index: 5;
+  }
+  .canvas-corner.tl { top: 18px; left: 20px; }
+  .canvas-corner.tr { top: 18px; right: 20px; }
+
+  .layout-pills {
+    display: flex; gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--sky-4);
+    border-radius: 6px;
+    background: rgba(17,23,43,0.72);
+    backdrop-filter: blur(6px);
+  }
+  .layout-pill {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    color: var(--cream-3);
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .layout-pill:hover { color: var(--cream); }
+  .layout-pill.on { background: var(--sky-4); color: var(--cream); }
+
+  .legend {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px;
+    padding: 6px 12px;
+    border: 1px solid var(--sky-4);
+    border-radius: 6px;
+    background: rgba(17,23,43,0.72);
+    backdrop-filter: blur(6px);
+    max-width: 320px;
+  }
+  .legend .key {
+    display: flex; align-items: center; gap: 6px;
+    color: var(--cream-2);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+  .legend .key .sw {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .zoom {
+    position: absolute;
+    bottom: 18px; right: 20px;
+    display: flex; flex-direction: column;
+    border: 1px solid var(--sky-4);
+    border-radius: 6px;
+    background: rgba(17,23,43,0.72);
+    backdrop-filter: blur(6px);
+    overflow: hidden;
+    z-index: 5;
+  }
+  .zoom button {
+    width: 30px; height: 28px;
+    border: none; background: transparent;
+    color: var(--cream-2);
+    font-family: var(--mono);
+    cursor: pointer;
+    border-bottom: 1px solid var(--sky-4);
+    font-size: 14px;
+    line-height: 1;
+  }
+  .zoom button:last-child { border-bottom: none; }
+  .zoom button:hover { background: var(--sky-3); color: var(--cream); }
+
+  /* ===== Detail panel ===== */
+  .detail {
+    grid-area: detail;
+    border-left: 1px solid var(--rule);
+    background: linear-gradient(to left, rgba(7,10,20,0.55), transparent 60%), var(--sky-1);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .detail-scroll {
+    overflow-y: auto;
+    flex: 1;
+    padding: 28px 32px 24px;
+  }
+  .detail-scroll::-webkit-scrollbar { width: 6px; }
+  .detail-scroll::-webkit-scrollbar-thumb { background: var(--sky-4); border-radius: 3px; }
+
+  #placeholder-msg {
+    display: flex; align-items: center; justify-content: center;
+    height: 100%;
+    min-height: 200px;
+    color: var(--cream-4);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  .d-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: var(--mono); font-size: 10px;
+    color: var(--cream-3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .d-head .idx em { color: var(--amber); font-style: normal; }
+
+  .d-topics {
+    display: flex; flex-wrap: wrap; gap: 5px;
+    margin-top: 14px;
+  }
+  .d-topic {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border: 1px solid var(--sky-4);
+    border-radius: 99px;
+    color: var(--cream-2);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .d-topic.primary { border-color: var(--amber); color: var(--amber-2); }
+
+  .d-title {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 40px;
+    line-height: 1.08;
+    margin: 14px 0 2px;
+    color: var(--cream);
+    letter-spacing: -0.005em;
+    text-wrap: pretty;
+  }
+
+  .d-byline {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--cream-2);
+    margin-top: 10px;
+  }
+  .d-byline .by {
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 10px;
+    color: var(--cream-3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-right: 6px;
+  }
+
+  .d-meta {
+    display: flex; flex-direction: column; gap: 4px;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--cream-2);
+  }
+  .d-meta .row { display: flex; gap: 12px; }
+  .d-meta .row .k {
+    color: var(--cream-3);
+    width: 60px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 10px;
+    padding-top: 1px;
+    flex-shrink: 0;
+  }
+  .d-meta .row .v { flex: 1; }
+
+  .d-actions {
+    display: flex; gap: 8px;
+    margin-top: 22px;
+  }
+  .btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 9px 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 1px solid var(--sky-4);
+    background: transparent;
+    color: var(--cream);
+    display: flex; align-items: center; gap: 6px;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .btn:hover { border-color: var(--cream-3); background: var(--sky-3); }
+  .btn.primary { background: var(--amber); border-color: var(--amber); color: var(--sky-0); }
+  .btn.primary:hover { background: var(--amber-2); border-color: var(--amber-2); }
+
+  .d-rule { height: 1px; background: var(--rule); margin: 24px 0; }
+
+  .d-section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--cream-3);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin-bottom: 10px;
+    display: flex; justify-content: space-between;
+  }
+  .d-section-label em { font-style: normal; color: var(--cream-4); }
+
+  .d-abstract {
+    font-family: var(--serif);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.55;
+    color: var(--cream);
+    text-wrap: pretty;
+  }
+  .d-abstract .drop {
+    font-family: var(--serif);
+    font-size: 44px;
+    line-height: 0.9;
+    float: left;
+    padding: 4px 10px 0 0;
+    color: var(--amber);
+    font-weight: 500;
+  }
+  .d-abstract p + p { margin-top: 10px; }
+
+  .nearby { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+  .nearby-item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    align-items: baseline;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--rule);
+    cursor: pointer;
+    transition: padding .15s, background .15s;
+    border-radius: 4px;
+  }
+  .nearby-item:hover { padding-left: 6px; padding-right: 6px; background: var(--sky-2); }
+  .nearby-item .w {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--amber);
+    letter-spacing: 0.04em;
+  }
+  .nearby-item .ttl {
+    font-family: var(--serif);
+    font-size: 15px;
+    color: var(--cream);
+    line-height: 1.25;
+    font-weight: 500;
+  }
+  .nearby-item .sp {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--cream-3);
+    margin-top: 2px;
+  }
+</style>
 </head>
 <body>
-  <div id="toolbar">
-    <button id="layout-toggle">Switch to Force</button>
-    <input id="search" type="text" placeholder="Search talks…" autocomplete="off" />
-  </div>
-  <div id="main">
-    <div id="graph-container"></div>
-    <div id="panel">
-      <div id="legend" style="display:none">
-        <h4>Topics</h4>
-      </div>
-      <div id="placeholder">Click a node to see talk details</div>
-      <div id="detail">
-        <h3 id="d-title"></h3>
-        <div class="meta">
-          <strong id="d-speaker"></strong><br>
-          <span id="d-date"></span>
-        </div>
-        <span id="d-topic" class="topic-badge"></span>
-        <p id="d-abstract" class="abstract"></p>
-        <a id="d-video" class="video-link" href="#" target="_blank" rel="noopener noreferrer">Watch video</a>
+
+<div class="stage">
+
+  <!-- ===== Top bar ===== -->
+  <header class="top">
+    <div class="mark">
+      <div class="mark-glyph"></div>
+      <div>
+        <div class="mark-title">Ezra <em>Talks</em></div>
+        <div class="mark-sub">Systems Engineering · Cornell</div>
       </div>
     </div>
-  </div>
-  <script type="module" src="app.js"></script>
+
+    <div class="cmd">
+      <span class="icon">⌕</span>
+      <input id="search" type="text" placeholder="search talks, speakers, or topics…" autocomplete="off" />
+      <span class="kbd">⌘K</span>
+    </div>
+
+    <div class="top-spacer"></div>
+
+    <div class="top-right">
+      <span class="stat"><b id="stat-talks">—</b> talks</span>
+      <span class="sep">/</span>
+      <span class="stat"><b id="stat-speakers">—</b> speakers</span>
+      <span class="sep">/</span>
+      <span class="stat"><b id="stat-links">—</b> links</span>
+    </div>
+  </header>
+
+  <!-- ===== Left rail ===== -->
+  <aside class="rail">
+    <div class="rail-section">
+      <div class="rail-label" id="chip-label-row">
+        <span id="chip-label-text">Topics</span>
+        <span class="clear" id="chip-clear">reset</span>
+      </div>
+      <div class="chip-cloud" id="chip-cloud"></div>
+    </div>
+
+    <div class="rail-section">
+      <div class="rail-label">Constellation</div>
+      <div class="view-opts" id="view-opts">
+        <div class="view-opt on" data-mode="topic"><span class="dot"></span>by topic</div>
+        <div class="view-opt" data-mode="speaker"><span class="dot"></span>by speaker</div>
+        <div class="view-opt" data-mode="year"><span class="dot"></span>by year</div>
+      </div>
+    </div>
+
+    <div class="rail-section">
+      <div class="rail-label">Cast your eye</div>
+      <div class="suggest">
+        <a id="cast-random"><span class="glyph">✦</span>a random talk</a>
+        <a id="cast-connected"><span class="glyph">✦</span>most-connected</a>
+        <a id="cast-orphan"><span class="glyph">✦</span>orphan stars</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== Canvas ===== -->
+  <main class="canvas-wrap">
+
+    <div class="canvas-corner tl">
+      <div class="layout-pills" id="layout-pills">
+        <span class="layout-pill on" data-layout="anchored">Anchored</span>
+        <span class="layout-pill" data-layout="umap">Pinned</span>
+        <span class="layout-pill" data-layout="force">Force</span>
+        <span class="layout-pill" data-layout="dynamic">Dynamic</span>
+      </div>
+    </div>
+
+    <div class="canvas-corner tr">
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div id="graph-container"></div>
+
+    <div class="zoom">
+      <button id="zoom-in" aria-label="Zoom in">+</button>
+      <button id="zoom-out" aria-label="Zoom out">−</button>
+      <button id="zoom-fit" aria-label="Fit">⤢</button>
+    </div>
+
+  </main>
+
+  <!-- ===== Detail panel ===== -->
+  <aside class="detail">
+    <div class="detail-scroll">
+
+      <div id="placeholder-msg">click a node to explore</div>
+
+      <div id="detail-content" style="display:none">
+        <div class="d-head">
+          <div class="idx">Talk <em id="d-idx">—</em></div>
+          <div id="d-head-date"></div>
+        </div>
+
+        <div class="d-topics" id="d-topics"></div>
+
+        <h1 class="d-title" id="d-title"></h1>
+
+        <div class="d-byline">
+          <span class="by">by</span> <span id="d-speaker"></span>
+        </div>
+
+        <div class="d-meta">
+          <div class="row"><span class="k">Date</span><span class="v" id="d-date"></span></div>
+        </div>
+
+        <div class="d-actions">
+          <a id="d-video" class="btn primary" href="#" target="_blank" rel="noopener noreferrer"
+             style="display:none; text-decoration:none">▶ Watch recording</a>
+        </div>
+
+        <div class="d-rule"></div>
+
+        <div class="d-section-label">Abstract</div>
+        <div class="d-abstract" id="d-abstract"></div>
+
+        <div class="d-rule"></div>
+
+        <div class="d-section-label">
+          Nearby stars <em id="d-nearby-label">— by similarity</em>
+        </div>
+        <div class="nearby" id="d-nearby"></div>
+      </div>
+
+    </div>
+  </aside>
+
+</div>
+
+<script type="module" src="app.js"></script>
 </body>
 </html>
